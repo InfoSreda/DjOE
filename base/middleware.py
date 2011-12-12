@@ -4,6 +4,7 @@ from django.conf import settings
 from djoe.base.cache import cache
 from djoe.base.utils import DATETIME_FORMATS
 
+DEFAULT_DATE = '2010-01-01 00:00:00.000000'
 
 class CacheResetMiddleware(object):
 
@@ -12,19 +13,19 @@ class CacheResetMiddleware(object):
             return None
         last_reset = cache.get_last_cache_reset(oe_session.database)
         if not last_reset:
-            last_reset = '2010-01-01 00:00:00.000000'
+            last_reset = DEFAULT_DATE
 
         now = datetime.datetime.now()
+        
         if datetime.datetime.strptime(last_reset, DATETIME_FORMATS[1]) + \
              datetime.timedelta(seconds=settings.OPENERP_CACHE_CHECK_TIMEOUT) \
                                                      > now:
             return None
         ctx = oe_session.get_default_context()
         reset_cache_ids = oe_session.objects('cache.log', 'search',
-                   [('last_modified', '<=', last_reset)],
-                                         0, None, 'last_modified',ctx)
-        
-        last_mod = now.strftime(DATETIME_FORMATS[1])
+                                [('last_modified', '>', last_reset)],
+                                         0, None, 'last_modified', ctx)
+        last_mod = now.strftime(DATETIME_FORMATS[1])        
         if reset_cache_ids:
             last_modified_id = reset_cache_ids[-1]
 

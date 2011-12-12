@@ -9,7 +9,7 @@ KEY_PREFIX = '%(db)s:%(model)s'
 KEY = KEY_PREFIX + ':%(uid)d:%(method)s:%(args)r'
 
 CACHABLE_METHODS = ('search', 'read', 'fields_get', 'fields_view_get',
-                    'get_context', 'get')
+                    'get_context', 'get', 'get_data')
 
 RESET_CACHE_METHODS = ('write', 'create')
 
