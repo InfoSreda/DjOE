@@ -1,0 +1,14 @@
+{% extends "djoe/client/base.html" %}
+
+{% block main %}
+<ul class="media-grid">
+{% for section in section_list %}
+  <li>
+    <a href="{% url section section.id %}">
+      <img class="thumbnail" src="http://placehold.it/120x120" alt="{{section.name}}">
+  <span>{{section.name}}</span>
+    </a>
+  </li>
+{% endfor %}
+  </ul>
+{% endblock %}

@@ -1,0 +1,17 @@
+from django.conf import settings
+from djoe.base.backends.xmlrpc import XMLRPCConnection
+from djoe.base.backends.base import OpenERPSession, OpenERPException
+
+CONNECTIONS = {'xmlrpc': XMLRPCConnection}
+
+conn_cls = CONNECTIONS[settings.OPENERP_PROTOCOL]
+
+connection = conn_cls(host=settings.OPENERP_HOST,
+                      port=settings.OPENERP_PORT)
+
+oe_session = OpenERPSession(connection)
+
+if hasattr(settings, 'OPENERP_USER') and hasattr(settings, 'OPENERP_PASSWORD') \
+       and hasattr(settings, 'OPENERP_DATABASE'):
+    oe_session.login(settings.OPENERP_DATABASE, settings.OPENERP_USER,
+                     settings.OPENERP_PASSWORD)

@@ -1,0 +1,10 @@
+{% extends "djoe/client/base.html" %}
+
+{% block content %}
+<div id="help_tip">
+{{klass.help}}
+</div>
+
+{% include "djoe/client/tree_view.html" %}
+
+{% endblock %}

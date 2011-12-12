@@ -1,0 +1,24 @@
+{% extends "djoe/client/base.html" %}
+
+{% block add_js %}
+<script>
+$(function(){
+$('#id_username').focus();
+});
+</script>
+{% endblock %}
+
+
+{% block body %}
+<div class="container" style="width:300px; margin:auto:text-align:center;">
+  <form action="." method="post">
+    {% csrf_token %}
+       <table>
+       <tbody>
+         {{ form }}
+      </tbody>
+      </table>
+    <button type="submit" class="btn">Вход</button>
+  </form>
+</div>
+{% endblock %}

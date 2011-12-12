@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+<h1>{{ wiki_page.name }}</h1>
+<ul>
+	<li><strong>Created at</strong>: {{ wiki_page.create_date }}</li>
+	<li><strong>Keywords</strong>: {{ wiki_page.tags }}</li>
+	<li><strong>Summary</strong>: {{ wiki_page.summary }}</li>
+</ul>
+
+{{ wiki_page.text_area }}
+
+<div>
+	<a href="{% url wiki %}">&larr; Back to the wiki page list</a>
+</div>
+
+{% endblock %}

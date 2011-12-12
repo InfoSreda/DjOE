@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+<h1>Product list</h1>
+
+<div class="pagination">
+	<ul>
+		<li class="prev{% if not page_obj.has_previous %} disabled{% endif %}">
+			<a href="?page={{ page_obj.previous_page_number }}">
+				&larr; Previous
+			</a>
+		</li>
+		
+		{# TODO: Ёбаный стыд. Сука, блядь. #}
+		{% for page in page_obj.page_range %}111111
+		<li><a>
+		{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+		</a></li>
+		{% endfor %}
+		
+		<li class="next{% if not page_obj.has_next %} disabled{% endif %}">
+			<a href="?page={{ page_obj.next_page_number }}">
+				Next &rarr;
+			</a>
+		</li>
+	</ul>
+</div>
+
+{% for product in product_list %}
+
+		<div class="well">
+			<div>
+				<strong>
+					<a href="{% url product object_id=product.id %}">
+					{{ product.name }}
+				</a></strong>
+				
+				<span class="label warning">{{ product.default_code }}</span>
+				<!-- Durty but easy. -->
+				<h1 class="pull-right">${{ product.list_price }}</h1>
+				<p>{{ product.categ_id.name }}</p>
+			</div>
+		</div>
+
+{% endfor %}
+{% endblock %}

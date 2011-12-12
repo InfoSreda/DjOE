@@ -1,0 +1,56 @@
+<div>
+  {{ hidden_html }}
+
+  {% if not static %}
+  <script class="tree-grid-row" type="text/x-kendo-tmpl">
+  {% autoescape off %}{{ tree_view.get_html }}{% endautoescape %}
+  </script>
+  {% endif %}
+
+<table class="tree-grid" url="{{ tree_view.get_url }}" style="font-size:0.85em;" {% if static %}static="true"{% endif %}>
+  <thead>
+    <tr>
+      {% if tree_view.with_edit %}
+      <th></th>
+      {% endif %}
+      {% for col in tree_view.headers %}
+      <th data-field="{{ col.field }}">
+	{{ col.title }}
+      </th>
+      {% endfor %}
+      {% if tree_view.with_edit %}
+      <th></th>
+      {% endif %}
+    </tr>
+  </thead>
+
+  {% if static %}
+  <tbody>
+    {% for row in rows %}
+    <tr rowid="{{ row.id }}" style="color:{{ row.color }}">
+      {% if tree_view.with_edit %}
+      <td nowrap>
+	<input type="checkbox"/>
+	<a href="./edit/${ __id }/">
+	<span class="k-icon k-edit"></span>
+	</a>
+      </td>
+      {% endif %}
+      
+      {% for val in row.fields %}
+      <td>{{ val }}</td>
+      {% endfor %}
+
+      {% if tree_view.with_edit %}
+      <td><a href="./delete/${ __id }/">
+	<span class="k-icon k-delete"></span></a>
+      </td>
+      {% endif %}
+
+    </tr>
+    {% endfor %}
+  </tbody>
+  {% endif %}
+
+</table>
+</div>

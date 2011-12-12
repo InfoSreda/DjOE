@@ -1,0 +1,12 @@
+<div>
+<div class="search_form"  style="font-size:0.85em;">
+  <form action="." method="get" style="white-space:nowrap;">
+    {% autoescape off %}{{ search_view.get_html }}{% endautoescape %}
+  <button type="submit" class="btn">Search</button>
+  </form>
+</div>
+
+<div><a href="./add/" class="btn">Add</a></div>
+
+{% include "djoe/client/tree_grid.html" %}
+</div>

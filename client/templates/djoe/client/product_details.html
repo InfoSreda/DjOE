@@ -1,0 +1,54 @@
+{% extends "jenavi_client/base.html" %}
+
+{% block title %}Описание товара - {{ product.name }}{% endblock %}
+
+{% block content %}
+<table>
+  <tr>
+    <td>
+      <img src="{% url product_photo 300 product.id %}" width="300" height="300"/>
+    </td>
+    <td>
+      <table>
+	<tbody>
+	  <tr>
+	    <th>Артикул</th>
+	    <td>{{ product.code }}</td>
+	  </tr>
+	  <tr>
+	    <th>Наименование</th>
+	    <td>{{ product.default_code }}</td>
+	  </tr>
+	  <tr>
+	    <th>Полное Наименование</th>
+	    <td>{{ product.description_sale }}</td>
+	  </tr>
+	  <tr>
+	    <th>Наименование</th>
+	    <td>{{ product.default_code }}</td>
+	  </tr>
+	  {% for dim in product.dimensions %}
+	  <tr>
+	    <th>{{ dim.0 }}</th>
+	    <td>{{ dim.1 }}</td>
+	  </tr>
+	  {% endfor %}
+	</tbody>
+      </table>
+
+      <table>
+	<tbody>
+	  <tr>
+	    <th>Цена</th>
+	    <td>{{ product.standard_price }}</td>
+	  </tr>
+	  <tr>
+	    <th>Цена со скидкой</th>
+	    <td>{{ product.list_price }}</td>
+	  </tr>
+	</tbody>
+      </table>
+    </td>
+  </tr>
+</table>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+<h1>Wiki pages</h1>
+
+<table>
+	<thead>
+		<tr>
+			<th>Page Title</th>
+			<th>Group</th>
+			<th>Section code</th>
+			<th>Actions</th>
+		</tr>
+	</thead>
+	<tbody>
+{% for wiki_page in wiki_list %}
+		<tr>
+			<td>
+				{{ wiki_page.name }}
+			</td>
+			<td>
+				{{ wiki_page.group_id.name }}
+			</td>
+			<td>
+				{{ wiki_page.section }}
+			</td>
+			<td>
+				<a href="{% url wiki_page object_id=wiki_page.id %}">
+					View the page
+				</a>
+			</td>
+		</tr>
+{% endfor %}
+	</tbody>
+</table>
+{% endblock %}

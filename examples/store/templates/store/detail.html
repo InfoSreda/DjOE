@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+<h1>{{ product.name }}</h1>
+<div class="pull-right">
+	<h2>
+		<a href="#">Order now</a>
+	</h2>
+</div>
+
+<dl>
+	<dt>Reference</dt>
+	<dd>{{ product.default_code }}</dd>
+	<dt>Catalogue price</dt>
+	<dd>${{ product.list_price }}</dd>
+	<dt>Customer lead time</dt>
+	<dd>{{ product.sale_delay }} day(s)</dd>
+	<dt>Manufacturing lead time</dt>
+	<dd>{{ product.produce_delay }} day(s)</dd>
+</dl>
+
+<div>
+	<a href="{% url store %}">&larr; Back to the product list</a>
+</div>
+
+{% endblock %}
