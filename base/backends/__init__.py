@@ -1,8 +1,11 @@
 from django.conf import settings
-from djoe.base.backends.xmlrpc import XMLRPCConnection
+from djoe.base.backends.xmlrpc import XMLRPCConnection, XMLRPCSConnection
+from djoe.base.backends.netrpc import NetRPCConnection
 from djoe.base.backends.base import OpenERPSession, OpenERPException
 
-CONNECTIONS = {'xmlrpc': XMLRPCConnection}
+CONNECTIONS = {'xmlrpc': XMLRPCConnection,
+               'netrpc': NetRPCConnection,
+               'xmlrpcs': XMLRPCSConnection}
 
 conn_cls = CONNECTIONS[settings.OPENERP_PROTOCOL]
 

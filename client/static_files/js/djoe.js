@@ -43,8 +43,6 @@ $(function() {
 			   }
 		       }
 		       if (data.errors) {
-			   console.log(2222222);
-
 			   form.find('.error-field').removeClass('.error_field');
 			   alert_mess = '';
 			   for (k in data.errors) {
@@ -62,6 +60,7 @@ $(function() {
 	    return false;
 	});
 	form.find(".tree-grid").each(function(){
+	    //return;
 	    $this = $(this);
 	    var stat = $this.attr('static');
 	    if (!stat) {

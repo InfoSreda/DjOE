@@ -1,11 +1,11 @@
-<div class="edit_form"  style="font-size:0.85em;">
+<div class="edit_form">
 
   <form action="{{ form_view.get_url }}" method="post">{% csrf_token %}
 
   <div>
-    <button type="submit" class="btn">Save</button>
+    <button type="submit" class="k-button">Save</button>
            |
-    <a href="{% if form_view.form_view_id %}{% url ajax_object_edit_with_view form_view.oe_model 0 form_view.form_view_id %}{% else %}{% url ajax_object_edit form_view.oe_model 0 %}{% endif %}" class="btn">New</a>
+    <a href="{% if form_view.form_view_id %}{% url djoe_client:ajax_object_edit_with_view form_view.oe_model 0 form_view.form_view_id %}{% else %}{% url djoe_client:ajax_object_edit form_view.oe_model 0 %}{% endif %}" class="k-button">New</a>
   </div>
 
   <div>

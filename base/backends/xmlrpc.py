@@ -4,14 +4,16 @@ from djoe.base.backends.base import Connection, OpenERPException
 
 
 class XMLRPCConnection(Connection):
+    protocol = 'http'
 
     def proxy(self, service):
         cache_attr = '_%s_proxy' % service
         cache_proxy = getattr(self, cache_attr, None)
         if cache_proxy is None:
             cache_proxy = xmlrpclib.ServerProxy( \
-                'http://%(host)s:%(port)d/xmlrpc/%(serv)s' % \
-                dict(host=self.host, port=self.port, serv=service),
+                '%(protocol)s://%(host)s:%(port)d/xmlrpc/%(serv)s' % \
+                dict(protocol=self.protocol,host=self.host,
+                     port=self.port, serv=service),
                 allow_none=True)
         setattr(self, cache_attr, cache_proxy)
         return cache_proxy
@@ -23,3 +25,7 @@ class XMLRPCConnection(Connection):
         except xmlrpclib.Fault, e:
             raise OpenERPException(force_unicode(e))
         return result
+
+
+class XMLRPCSConnection(XMLRPCConnection):
+    protocol = 'https'

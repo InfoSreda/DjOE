@@ -33,6 +33,7 @@ class OpenERPException(Exception):
             lines.append('<p style="%s">%s</p>' % ( style, l))
         return u'<div>%s</div>' % u''.join(lines)
 
+
 class OpenERPSession(object):
 
     def __init__(self, connection, user_id=None, database=None, password=None):

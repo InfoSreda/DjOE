@@ -301,7 +301,7 @@ class OpenERPModelFactory(object):
             if not class_name:
                 class_name = ''.join([el.capitalize() for el in \
                                   self.model_name.split('.')])
-            klass = type(class_name, (OpenERPBaseModel,), attrs)
+            klass = type(str(class_name), (OpenERPBaseModel,), attrs)
 
         if self.o2m_links:
             self.remake_fk(klass)

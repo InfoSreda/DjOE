@@ -75,6 +75,7 @@ class OpenERPBaseView(object):
             self.model_class = self.model_class._openerp_session.get_model(
                self.model_class._openerp_model, all_oe_fields=oe_view['fields'])
         self.oe_model = model_class._openerp_model
+        print oe_view['arch']
         self.arch = etree.fromstring(oe_view['arch'])
         self.view_id = view_id
 
@@ -89,8 +90,8 @@ class OpenERPBaseView(object):
     def _html_button(self, button):
         icon = button.attrib.get('icon')
         title = button.attrib.get('string')
-        html = ['<button class="form_button btn" type="button" title="%s">' \
-                % title]
+        html = ['<button class="form_button button" type="button" title="%s" style="%s">' \
+                % (title, self.get_width(button))]
         if icon:
             html.extend(self._html_icon(icon))
         html.append('</button>')
@@ -132,12 +133,12 @@ class OpenERPTreeView(OpenERPBaseView):
 
     def get_url(self):
         if self.view_id and self.search_view_id:
-            url = reverse('ajax_object_search_with_views',
+            url = reverse('djoe_client:ajax_object_search_with_views',
                        args=(self.oe_model,
                              self.view_id,
                              self.search_view_id))
         else:
-            url = reverse('ajax_object_search',
+            url = reverse('djoe_client:ajax_object_search',
                        args=(self.oe_model,))
         if self.with_edit:
             url += '?_with_edit=true'
@@ -202,10 +203,12 @@ class OpenERPBaseFormView(OpenERPBaseView):
     def __init__(self, data=None, instance=None, *args, **kwargs):
         super(OpenERPBaseFormView, self).__init__(*args, **kwargs)
         form_class = self.get_form_class()
+        initial = {}
+        if instance and self.o2m_fields:
+            for field in self.o2m_fields:
+                initial[field] = getattr(instance, field).all()
         self.instance = instance
-        self.form = form_class(data=data, instance=instance)
-        print 3333333333333333333333333333333333
-        print self.form.initial
+        self.form = form_class(data=data, instance=instance, initial=initial)
         for field in self.form.fields.values():
             self._field_prepare(field)
         self.col = 4
@@ -231,17 +234,14 @@ class OpenERPBaseFormView(OpenERPBaseView):
 
     def get_form_class(self):
         form_fields = self.get_form_fields()
-        for f in set(form_fields):
-            if f.startswith('prod'):
-                print f
         klass_meta = type('Meta', (), {'model':self.model_class,
                                        'fields':self.get_form_fields()})
         attrs = {'Meta': klass_meta}
-        o2m_fields = set(form_fields)
+        self.o2m_fields = set(form_fields)
 
         for field in self.model_class._meta.fields:
-            if field.name in o2m_fields:
-                o2m_fields.remove(field.name)
+            if field.name in self.o2m_fields:
+                self.o2m_fields.remove(field.name)
             else:
                 continue
             if isinstance(field, models.ForeignKey):
@@ -250,23 +250,21 @@ class OpenERPBaseFormView(OpenERPBaseView):
                                                      required=not(field.blank))
 
         for field in self.model_class._meta.many_to_many:
-            if field.name in o2m_fields:
-                o2m_fields.remove(field.name)
+            if field.name in self.o2m_fields:
+                self.o2m_fields.remove(field.name)
             attrs[field.name] = self.m2m_field_class(model=field.rel.to,
                                                   label=field.verbose_name,
                                                   required=not(field.blank))
 
-        for field_name in o2m_fields:
-            print '#############', field_name
-            required = field_name \
-                                  in self.model_class._openerp_readonly_fields
+        for field_name in self.o2m_fields:
+            required = field_name in self.model_class._openerp_readonly_fields
             field = getattr(self.model_class, field_name)
             if hasattr(field, 'field'):
                 model = field.field.rel.to
             else:
                 model = field.related.model
             attrs[field_name] = self.o2m_field_class(model=model,
-                                                 required=required)
+                                                     required=required)
 
         klass_form = type('ItemForm', (forms.ModelForm,), attrs)
         return klass_form
@@ -297,8 +295,8 @@ class OpenERPBaseFormView(OpenERPBaseView):
         return html
 
     def _html_label(self, label):
-        html = ['<div class="form_label" style="%s">' % self.get_width(label),
-                label.attrib['string'], '</div>']
+        html = ['<span class="form_label" style="%s">' % self.get_width(label),
+                label.attrib['string'], '</span>']
         return html
 
     def _html_separator(self, separator):
@@ -386,16 +384,21 @@ class OpenERPFormView(OpenERPBaseFormView):
     def get_url(self):
         object_id = self.instance and self.instance.pk or 0
         if self.view_id:
-            url = reverse('ajax_object_edit_with_view',
+            url = reverse('djoe_client:ajax_object_edit_with_view',
                        args=(self.oe_model, object_id, self.view_id))
         else:
-            url = reverse('ajax_object_edit',
+            url = reverse('djoe_client:ajax_object_edit',
                        args=(self.oe_model, object_id))
         return url
 
     def get_width(self, field, colspan=None):
+        nolabel = field.attrib.get('nolabel')
         if colspan is None:
             colspan = float(field.attrib.get('colspan', 1))
+        if nolabel:
+            colspan += 1
+        if colspan > self.col:
+            colspan = self.col
         return 'width:%.2f%%' % (98 * (colspan/float(self.col)))
 
     def _field_prepare(self, field):
@@ -411,7 +414,7 @@ class OpenERPFormView(OpenERPBaseFormView):
 
     def _html_button(self, button):
         states = button.attrib.get('states')
-        if states is not None:
+        if self.instance and states is not None:
             if not self.instance.state in \
                    [s.strip() for s in states.split(',')]:
                 return []

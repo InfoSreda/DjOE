@@ -7,186 +7,66 @@
 	<!--[if lt IE 9]>
 		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
 	<![endif]-->
-	
+	{% block media %}
+	{% block js %}
 	<script src="{% get_static_prefix %}js/jquery-1.7.1.min.js"></script>
 	<script src="{% get_static_prefix %}js/kendo.all.min.js"></script>
-	<script src="{% get_static_prefix %}twitter-bootstrap/js/bootstrap-dropdown.js"></script>
 	<script src="{% get_static_prefix %}js/djoe.js"></script>
+	{% endblock %}
 
-
-	<link rel="stylesheet" href="{% get_static_prefix %}twitter-bootstrap/bootstrap.min.css" />
-	<link rel="stylesheet" href="{% get_static_prefix %}twitter-bootstrap/bootstrap.min.css" />
+	{% block css %}
         <link href="{% get_static_prefix %}css/kendo.common.min.css" rel="stylesheet"/>
         <link href="{% get_static_prefix %}css/kendo.silver.min.css" rel="stylesheet"/>
-	<link rel="stylesheet" href="{% get_static_prefix %}css/custom.css" />
-<style>
-
-.tree-grid button.btn{
-padding:1px;
-margin:1px;
-}
-
-label {
-display:inline-block;
-float:none;
-width:auto;
-}
-
-.search_field {
-white-space:pre-wrap;
-}
-.search_field label {
-display: block;
-font-weight: bold;
-float:left;
-}
-
-.m2o_field {
-white-space:nowrap;
-}
-
-.search_form span, .edit_form span{
-display:inline-block;
-}
-
-.search_form span.form_field {
-display:block;
-}
-
-
-.search_form input, .search_form select{
-width: auto;
-display:block;
-clear:both;
-}
-
-.edit_form .form_field input:text, .edit_form .form_field select, .edit_form .form_field textarea {
-width: 99%;
-display:inline-block;
-}
-
-.form_field input:text, .form_field select {
-height: 20px;
-line-height: 20px;
-padding: 1px 2px;
-margin: 2px 1px;
-}
-
-
-span.form_field a.k-icon {
-margin:5px 0 0 3px;
-}
-.form_field .k-icon:hover {
-background-color:#e5e5e5;
-}
-
-.group_treeview .k-group {
-background:0;
-}
-
-.k-group {
-display:none;
-}
-
-.expanded{
-display:block;
-}
-
-.required_field {
-background: #aaaaef;
-}
-
-.errorsDialog {
-font-size:1.2em;
-}
-
-.errorsDialog ul li{
-list-display:none;
-color: #e22;
-}
-
-.error-field {
-background-color: #f3aaaa;
-}
-
-.separator_horizontal {
-width:98%;
-border-bottom: 1px solid #222;
-font-weight: bold;
-display:inline-block;
-margin:4px 1px;
-}
-.separator_vertical {
-width:3px;
-display:inline-block;
-}
-
-.edit_form div,  .edit_form span{
-vertical-align:top;
-}
-
-span.form_field{
-display:inline-block;
-}
-
-div.form_group{
-display:inline-block;
-vertical-align:top;
-}
-
-button img {
-width: 16px;
-height: 16px;
-margin: 0px 3px;
-}
-
-.edit_form button.btn, .search_form button.btn{
-padding: 2px 4px;
-}
-
-</style>
-{% block add_js %}
+	<link rel="stylesheet" href="{% get_static_prefix %}css/djoe.css" />
 {% endblock %}
+{% endblock %}
+
 </head>
 
 <body>
   {% block body %}
-
-	<div class="topbar" data-dropdown="dropdown">
-		<div class="topbar-inner">
-			<div class="container-fluid">
-				<a class="brand" href=".">{{ user.company_id.1 }}</a>
-				<ul class="nav">
-				  {% for section in section_list %}
-					<li {% if section == current_section %}class="active"{% endif %}>
-					  <a href="{% url section section.id %}">{{ section.name }}</a>
-					</li>
-					{% endfor %}
-				</ul>
-
-				<ul class="nav secondary-nav">
-				  <li class="dropdown">
-				  <a href="#" class="dropdown-toggle">{{ user.get_user.name }}</a>
-				  <ul class="dropdown-menu">
-				    <li><a href="#">home</a></li>
-				    <li><a href="#">requests</a></li>
-				    <li><a href="#">preferences</a></li>
-				    <li class="divider"></li>
-				    <li>
-				    <a href="{% url logout %}">Logout</a>
-				    </li>
-				  </ul>
-				  </li>
-				</ul>
-
-			</div>
+	<div class="topbar">
+	  {% block topbar %}
+	      <div class="topbar-container k-widget k-header">
+		{% block brand %}
+		<div class="topbar-brand">
+		  <a class="brand k-link" href=".">{{ user.company_id }}</a>
 		</div>
+		{% endblock %}
+		<div class="topbar-menu">
+		  <ul class="nav">
+		    {% for section in section_list %}
+		    <li {% if section == current_section %}class="active"{% endif %}>
+		    <a href="{% url djoe_client:section section.id %}">{{ section.name }}</a>
+		    </li>
+		    {% endfor %}
+		  </ul>
+		</div>
+			      
+		<div class="topbar-prop">
+		  <ul class="dropdown">
+		    <li>{{ user.get_user.name }}
+		    <ul>
+		      <li><a href="#">home</a></li>
+		      <li><a href="#">requests</a></li>
+		      <li><a href="#">preferences</a></li>
+		      <li class="divider"></li>
+		      <li> <a href="{% url djoe_client:logout %}">Logout</a></li>
+		    </ul>
+		  </li>
+		</ul>
+	      </div>
+	      <div class="clear"></div>
+	    </div>
+		{% endblock %}
 	</div>
 
-	<div class="container-fluid">
+	<div class="container clear">
 	  {% block main %}
 	  <div class="sidebar" id="sidebar">
+	    {% block sidebar %}
 	    {% include "djoe/client/panel_menu.html" %}
+	    {% endblock %}
 	  </div> <!-- /sidebar -->
 
 	  <div class="content">

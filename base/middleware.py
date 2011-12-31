@@ -1,10 +1,11 @@
 import datetime
-from djoe.base.backends import oe_session, OpenERPSession
+from djoe.base.backends import oe_session, OpenERPSession, OpenERPException
 from django.conf import settings
 from djoe.base.cache import cache
 from djoe.base.utils import DATETIME_FORMATS
 
 DEFAULT_DATE = '2010-01-01 00:00:00.000000'
+
 
 class CacheResetMiddleware(object):
 
@@ -22,9 +23,14 @@ class CacheResetMiddleware(object):
                                                      > now:
             return None
         ctx = oe_session.get_default_context()
-        reset_cache_ids = oe_session.objects('cache.log', 'search',
+        try:
+            reset_cache_ids = oe_session.objects('cache.log', 'search',
                                 [('last_modified', '>', last_reset)],
                                          0, None, 'last_modified', ctx)
+        except OpenERPException, exc:
+            if "Object cache.log doesn't exist" in unicode(exc):
+                return
+            raise
         last_mod = now.strftime(DATETIME_FORMATS[1])        
         if reset_cache_ids:
             last_modified_id = reset_cache_ids[-1]
