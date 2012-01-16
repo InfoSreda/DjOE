@@ -1,7 +1,7 @@
 import socket
 import cPickle
 import sys
-
+from threading import local
 from django.utils.encoding import force_unicode
 from djoe.base.backends.base import Connection, OpenERPException
 
@@ -12,7 +12,7 @@ class SocketRecieveError(Exception):
     pass
 
 
-class NetRPCProxy(object):
+class NetRPCProxy(local):
 
     def __init__(self, host, port, service='object'):
         self.host = host
@@ -33,6 +33,9 @@ class NetRPCProxy(object):
         try:
             if sys.platform != 'darwin':
                 self.socket.shutdown(socket.SHUT_RDWR)
+        except:
+            pass
+        try:
             self.socket.close()
         except:
             pass
@@ -81,7 +84,6 @@ class NetRPCProxy(object):
                     self.init_socket()
                     continue
                 break
-            self.disconnect()                    
             return res
         return meth
 
