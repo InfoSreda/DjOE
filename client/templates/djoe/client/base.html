@@ -4,22 +4,21 @@
 	<meta charset="utf-8" />
 	<title>{% block title %}OpenERP Djoe Client{% endblock %}</title>
 	
-	<!--[if lt IE 9]>
-		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
-	<![endif]-->
 	{% block media %}
-	{% block js %}
-	<script src="{% get_static_prefix %}js/jquery-1.7.1.min.js"></script>
-	<script src="{% get_static_prefix %}js/kendo.all.min.js"></script>
-	<script src="{% get_static_prefix %}js/djoe.js"></script>
-	{% endblock %}
-
 	{% block css %}
         <link href="{% get_static_prefix %}css/kendo.common.min.css" rel="stylesheet"/>
         <link href="{% get_static_prefix %}css/kendo.silver.min.css" rel="stylesheet"/>
 	<link rel="stylesheet" href="{% get_static_prefix %}css/djoe.css" />
-{% endblock %}
-{% endblock %}
+        {% endblock %}
+
+	{% block js %}
+	<script src="{% get_static_prefix %}js/jquery-1.7.1.min.js"></script>
+	<script src="{% get_static_prefix %}js/jquery.ba-hashchange.min.js"></script>
+	<script src="{% get_static_prefix %}js/kendo.all.min.js"></script>
+	<script src="{% get_static_prefix %}js/djoe.js"></script>
+	{% endblock %}
+
+        {% endblock %}
 
 </head>
 
@@ -30,13 +29,13 @@
 	      <div class="topbar-container k-widget k-header">
 		{% block brand %}
 		<div class="topbar-brand">
-		  <a class="brand k-link" href=".">{{ user.company_id }}</a>
+		  <a class="brand k-link" href="{% url djoe_client:index %}">{{ user.company_id }}</a>
 		</div>
 		{% endblock %}
 		<div class="topbar-menu">
 		  <ul class="nav">
 		    {% for section in section_list %}
-		    <li {% if section == current_section %}class="active"{% endif %}>
+		    <li {% if section == current_section %}class="k-state-selected"{% endif %}>
 		    <a href="{% url djoe_client:section section.id %}">{{ section.name }}</a>
 		    </li>
 		    {% endfor %}
@@ -63,18 +62,8 @@
 
 	<div class="container clear">
 	  {% block main %}
-	  <div class="sidebar" id="sidebar">
-	    {% block sidebar %}
-	    {% include "djoe/client/panel_menu.html" %}
-	    {% endblock %}
-	  </div> <!-- /sidebar -->
-
-	  <div class="content">
-	    {% block content %}
-	    {% endblock %}
-	  </div> <!-- /content -->
-	{% endblock %}
-	</div> <!-- /container-fluid -->
+	  {% endblock %}
+	</div> <!-- /container -->
 {% endblock %}
 </body>
 </html>

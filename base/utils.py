@@ -1,7 +1,7 @@
 import datetime
 import decimal
 from django.db import models
-
+from djoe.base import fields
 
 DATETIME_FORMATS = ('%Y-%m-%d %H:%M:%S',
                     '%Y-%m-%d %H:%M:%S.%f',
@@ -28,9 +28,9 @@ def openerp2django(obj, model):
     for k, value in obj.iteritems():
         field_type = model._meta.get_field_by_name(k)[0]
         if value == False and not isinstance(field_type,
-                           (models.BooleanField, models.NullBooleanField)):
+                                             fields.OpenERPBooleanField):
             value = None
-        if isinstance(field_type, models.ForeignKey):
+        if isinstance(field_type, fields.OpenERPMany2oneField):
             if value:
                 if isinstance(value, (list,tuple)):
                     pk, name = value[:2]
@@ -41,19 +41,25 @@ def openerp2django(obj, model):
                 value = inst
             else:
                 value = None
+
+        if isinstance(field_type, (fields.OpenERPOne2manyField, fields.OpenERPMany2manyField)):
+            if value:
+                value = [field_type.rel.to(id=pk) for pk in value]
+            else:
+                value = []
+
         if isinstance(value, list) and isinstance(field_type,
-                                                  (models.IntegerField)):
+                                             (fields.OpenERPIntegerField)):
             # foreign key case, when  OE return  [id, name]
             value = value[0] if value else None
 
-        if value and isinstance(field_type, (models.DateTimeField,
-                                             models.DateField)):
+        if value and isinstance(field_type, (fields.OpenERPDatetimeField,
+                                             fields.OpenERPDateField)):
             for dformat in DATETIME_FORMATS:
                 try:
                     value = datetime.datetime.strptime(value, dformat)
                     break
                 except ValueError:
                     continue
-                    
         django_obj[k] = value
     return django_obj

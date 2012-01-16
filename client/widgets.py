@@ -44,23 +44,30 @@ class OEHiddenInput(forms.HiddenInput):
 class OEManyToOneWidget(forms.HiddenInput):
 
     def render(self, name, value, attrs=None):
-        print value
         oe_model = value._openerp_model
         edit_url = reverse('djoe_client:ajax_object_edit', args=(oe_model, 0))
         search_url = reverse('djoe_client:ajax_object_search', args=(oe_model,))
         get_name_url = reverse('djoe_client:ajax_object_get_name', args=(oe_model, 0,))
-
-        html = ['<span class="m2o_field" oe_model="%s" get_name="%s">' % \
-                (oe_model, get_name_url),
-
+        text_input = '<input type="text" value="%s" class="m2o_title %s"/>' % \
+                     (value.name_get(), self.attrs.get('class', ''))
+        
+        html = [#'<span class="m2o_field" oe_model="%s" get_name="%s">' % \
+                #(oe_model, get_name_url),
+                '<div style="float:right;width:39px;">',
+                '<a class="k-button" href="%s"' % edit_url ,
+                    '' if value.pk else ' style="display:none"',
+                 '><span class="k-icon k-maximize"></span>' 
+                '</a>',
+                '<a class="k-button" href="%s">' % search_url,
+                '<span class="k-icon k-search" ></span>',
+                '</a>',
+                '</div>',
             super(OEManyToOneWidget, self).render(name, value.pk, attrs),
-               u'<span><input type="text" value="%s" class="m2o_title"/></span>' % \
-                value.name_get(),
-                '<a class="k-icon k-maximize" href="%s"' % edit_url,
-                '' if value.pk else ' style="display:none"',
-                '></a>',
-                '<a class="k-icon k-search" href="%s"></span>' % search_url,
-                '</a>']
+               u'<div style="padding-right:39px">',
+               text_input,
+               '</div>' 
+                #'<div style="clear:both"></div>',
+                ]
         return mark_safe(''.join(html))
 
 
@@ -174,7 +181,6 @@ class OEBaseRelationField(forms.Field):
 
     def prepare_value(self, value):
         # mustbe instance of models.Model
-        print '@@@@@@@@@@@@@@@@@@@', value, type(value)
         if not value:
             value = self.model(None)
         elif isinstance(value, (int, long, basestring)):
@@ -200,7 +206,6 @@ class OEManyToManyField(OEBaseRelationField):
 
     def prepare_value(self, value):
         # mustbe instance of models.Model
-        print '@@@@@@@@@@@@@@@@@@@', value, type(value)
         if not value:
             value = [self.model(None)]
         elif isinstance(value, (list, tuple)):

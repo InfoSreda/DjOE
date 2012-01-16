@@ -1,13 +1,50 @@
 {% extends "djoe/client/base.html" %}
 
+
+{% block css %}
+{{ block.super }}
+<style>
+ul.sections li{
+   display: block;
+   float: left;
+   list-style:none;
+   border: 1px solid #eee;
+   text-align:center;
+   width: 150px;
+   height: 150px;
+}
+ul.sections li a{
+   text-decoration:none;
+   font-size: 1.2em;
+   font-weight: bold;
+   color: #778;
+}
+</style>
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
+<script>
+var changeSrc = function(){
+        var $this = $(this)
+        , src = $this.attr('src')
+        , hsrc = $this.attr('hoversrc');
+        $this.attr('src', hsrc).attr('hoversrc', src);
+};
+$(function(){
+    $('ul.sections img').hover(changeSrc, changeSrc);
+});
+</script>
+{% endblock %}
+
 {% block main %}
-<ul class="media-grid">
+<ul class="sections">
 {% for section in section_list %}
   <li>
-    <a href="{% url djoe_client:section section.id %}">
-      <img class="thumbnail" src="http://placehold.it/120x120" alt="{{section.name}}">
-  <span>{{section.name}}</span>
-    </a>
+  <a href="{% url djoe_client:section section.id %}">
+  <img class="thumbnail" src="{{ section.web_icon_data.url }}" alt="{{section.name}}" hoversrc="{{ section.web_icon_hover_data.url }}">
+  <div>{{section.name}}</div>
+  </a>
   </li>
 {% endfor %}
   </ul>

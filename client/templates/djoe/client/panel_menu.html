@@ -1,7 +1,7 @@
 <ul>
   {% for m in menu_list %}
-  <li {% if m == current_menu %}class="active_menu"{% endif %}>
-  <a href="{% url djoe_client:submenu current_section.id m.id %}" id="panelmenu{{m.id}}" {% if m == current_menu %}class="k-state-selected"{% endif %}>{{ m.name }}</a>
+  <li>
+  <a href="./#!/menu/{{ m.id }}" id="panelmenu{{ m.id }}">{{ m.name }}</a>
   {% if m.childrens %}
   {% with 'djoe/client/panel_menu.html' as template and m.childrens as menu_list %}
   {% include template %}

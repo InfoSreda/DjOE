@@ -9,6 +9,8 @@ from djoe.base.utils import django2openerp, openerp2django, to_oe
 
 logger = logging.getLogger('openerp.query')
 
+READONLY_FIELDS = ('create_date', 'write_date')
+
 
 OP_MAP = {
     'exact': '=',
@@ -202,6 +204,10 @@ class OpenERPQuerySet(QuerySet):
                 model_fields = (f for f in model_fields if not \
                                 isinstance(f, models.FileField))
             fields = [f.name for f in model_fields]
+        defer_fields, defer = self.query.deferred_loading
+        if defer_fields:
+            fields = (set(fields) - defer_fields) if defer else defer_fields
+            fields = list(fields)
         if not ids:
             ids = self.oe_search()
         if fields == ('id',):
@@ -212,6 +218,19 @@ class OpenERPQuerySet(QuerySet):
                                             context=context)
         return (res, ids) if with_ids else res
 
+    def oe_default_get(self, fields=None, context=None, as_dict=False):
+        if not fields:
+            model_fields = self.model._meta.fields
+            if not self.with_binary:
+                model_fields = (f for f in model_fields if not \
+                                isinstance(f, models.FileField))
+            fields = [f.name for f in model_fields]
+        res = self.execute_with_context('default_get', fields, context=context)
+        if as_dict:
+            return res
+        kwargs = openerp2django(res, self.model)
+        item = self.model(**kwargs)
+        return item
 
     def oe_fields_view_get(self, view_id, view_type, context=None):
         return self.execute_with_context('fields_view_get',
@@ -220,10 +239,15 @@ class OpenERPQuerySet(QuerySet):
     def oe_name_get(self, ids, context=None):
         return self.execute_with_context('name_get', ids, context=context)
 
+    def _filter_readonly(self, values):
+        return dict((k, v) for k,v in values.iteritems() if k not in READONLY_FIELDS)
+
     def oe_create(self, values, context=None):
+        values = self._filter_readonly(values)
         return self.execute_with_context('create', values, context=context)
 
     def oe_write(self, ids, values, context=None):
+        values = self._filter_readonly(values)
         return self.execute_with_context('write', ids, values, context=context)
 
     def oe_unlink(self, ids, context=None):

@@ -2,7 +2,7 @@ import base64, datetime
 from lxml import etree
 from django.db import models
 from django.shortcuts import render_to_response
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.template import RequestContext
 from django.shortcuts import get_object_or_404, redirect
 from django.core.urlresolvers import reverse
@@ -12,6 +12,7 @@ from django.utils import simplejson
 from django.core.paginator import Paginator, InvalidPage, EmptyPage
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
+from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_protect
 from django.contrib.auth import views as auth_views
 
@@ -26,14 +27,21 @@ class OpenERPWebClientSite(object):
 
     authentication_form = OpenERPAuthFormWithSelectDB
 
-    index_view_template = 'djoe/client/main_page.html'
+    index_view_template = 'djoe/client/index.html'
     section_view_template = 'djoe/client/section.html'
+
+    form_view_class = OpenERPFormView
+    tree_view_class = OpenERPTreeView
+    search_view_class = OpenERPSearchView
 
     def wrapp_view(self, meth):
 
         def wrapper(request, *args, **kwargs):
             view = login_required(meth, login_url=reverse('djoe_client:login'))
             return view(request, *args, **kwargs)
+
+        if getattr(meth, 'jsonable', False):
+            wrapper = self.json_decor(wrapper)
 
         if not getattr(meth, 'cacheable', False):
             wrapper = never_cache(wrapper)
@@ -43,6 +51,32 @@ class OpenERPWebClientSite(object):
         if not getattr(meth, 'csrf_exempt', False):
             wrapper = csrf_protect(wrapper)
         return wrapper
+
+    def json_decor(self, func):
+        def json_wrapp(*args, **kwargs):
+            status = 200
+            try:
+                result = func(*args, **kwargs)
+                if isinstance(result, HttpResponseRedirect):
+                    # login_required redirect
+                    # TODO: login_required validation use in that decorator
+                    status = 403
+                    result = {'_redirect': result['location']}
+                elif isinstance(result, HttpResponse):
+                    return result
+                assert isinstance(result, dict)
+            except Exception, exc:
+                status = 404 if isinstance(exc, Http404) else 500
+                if hasattr(exc, 'as_html'):
+                    mess = exc.as_html()
+                else:
+                    raise
+                result = {'error': mess}
+            json = simplejson.dumps(result)
+            resp = HttpResponse(json, mimetype='application/json',
+                                status=status)
+            return resp
+        return json_wrapp
 
     def get_urls(self):
         from django.conf.urls.defaults import patterns, url, include
@@ -62,9 +96,27 @@ class OpenERPWebClientSite(object):
            url(r'^section/(?P<section_id>\d+)/$',
                self.wrapp_view(self.section_view),
                name="section"),
+                            
+           url(r'^section/\d+/menu/(?P<menu_id>\d+)/$',
+               self.wrapp_view(self.menu_view),
+               name="menu"),
+
+           url(r'^get_view/$',
+               self.wrapp_view(self.getview_view),
+               name="menu"),
+
+           url(r'^edit/(?P<oe_model>[\w\.]+)/get/(?P<object_id>\d+)/$',
+               self.wrapp_view(self.edit_view), name="object_edit"),
+           url(r'^edit/(?P<oe_model>[\w\.]+)/get/(?P<object_id>\d+)/form/(?P<form_view_id>\d+)/$',
+               self.wrapp_view(self.edit_view),
+               name="object_edit_with_view"),
+
+                                # OLD VIEWS
+
            url(r'^section/(?P<section_id>\d+)/menu/(?P<menu_id>\d+)/$',
                self.wrapp_view(self.submenu_view),
                name="submenu"),
+
            url(r'^section/(?P<section_id>\d+)/menu/(?P<menu_id>\d+)/edit/(?P<object_id>\d+)/$',
                self.wrapp_view(self.edit_view),
                name="object_edit"),
@@ -130,8 +182,132 @@ class OpenERPWebClientSite(object):
         return render_to_response(self.section_view_template,
                               {'section_list': sections,
                                'menu_list': menu_list,
-                               'current_section':  section},
+                               'current_section': section},
                               context_instance=RequestContext(request))
+
+    def menu_view(self, request, menu_id):
+        menu_id = int(menu_id)
+        ctx = request.user.get_default_context()
+        menu_action = request.user.objects('ir.values', 'get', 'action',
+                             'tree_but_open', [('ir.ui.menu', menu_id)], False,
+                                     ctx)[0][2]
+        model_name = menu_action['res_model']
+        ItemModel = request.user.get_model(model_name)
+
+        views = menu_action['views']
+        view_type = views[0][1]
+
+        ViewClass = getattr(self, '%s_view_class' % view_type)
+        search_view_id = menu_action['search_view_id'][0] \
+                         if menu_action['search_view_id'] else None
+
+        kwargs = dict(model_class=ItemModel,
+                      view_id=views[0][0],
+                      search_view_id=search_view_id,
+                      with_edit=True)
+        if view_type == 'form':
+            kwargs['instance'] = ItemModel.objects.oe_default_get(context=ctx)
+        view = ViewClass(**kwargs)
+        views = dict(( (v[1], v[0]) for v in views))
+        result = {
+            'target':  menu_action['target'],
+            'name': menu_action['name'],
+            'help': menu_action['help'],
+            'views': views,
+            'view_type': view_type,
+            'model': model_name
+            }
+        result.update(view.render())
+        if search_view_id:
+            initial = request.user.objects('ir.filters', 'get_filters',
+                                           model_name)
+            print '%%%%%%%%%%%%%', initial
+            search_view = OpenERPSearchView(model_class=ItemModel,
+                                        view_id=search_view_id)
+            search_view.get_html()
+            result.update(search_view.render())
+        return result
+    menu_view.jsonable = True
+
+    def getview_view(self, request):
+        ctx = request.user.get_default_context()
+
+        model_name = request.GET['model']
+        ItemModel = request.user.get_model(model_name)
+
+        view_type = request.GET['type']
+        try:
+            view_id = int(request.GET['id'])
+        except:
+            view_id = None
+        ViewClass = getattr(self, '%s_view_class' % view_type)
+
+        kwargs = dict(model_class=ItemModel,
+                      view_id=view_id,
+                      with_edit=True)
+        if view_type == 'form':
+            kwargs['csrf_token'] = get_token(request)
+
+            if 'object_id' in request.GET:
+                kwargs['instance'] = ItemModel.objects.get(id=request.GET['object_id'])
+            else:
+                kwargs['instance'] = ItemModel.objects.oe_default_get(context=ctx)
+        view = ViewClass(**kwargs)
+        result = {
+            'view_type': view_type,
+            'model': model_name
+            }
+        #print view.get_html()
+        result.update(view.render())
+        return result
+    getview_view.jsonable = True
+
+    def edit_view(self, request, oe_model, object_id=None,
+                       form_view_id=False):
+        object_id = int(object_id)
+        ItemModel = request.user.get_model(str(oe_model))
+        ctx = request.user.get_default_context()
+
+        if object_id:
+            item = get_object_or_404(ItemModel, id=object_id)
+        else:
+            item = None
+
+        if not request.POST:
+            raise Http404
+        
+        form_view = OpenERPFormView(model_class=ItemModel,
+                                    instance=item,
+                                    data=request.POST,
+                                    view_id=form_view_id)
+        #form_view.remove_notview_model_fields()
+        data = {'id': object_id or 0}
+        if form_view.is_valid():
+            inst = form_view.save()
+            data['id'] = inst.id
+            data['save'] = True
+        else:
+            errs = {}
+            for k, v in form_view.errors.iteritems():
+                errs[k] = u'%s: %s' % (form_view.form[k].label, v)
+            data['errors'] = errs
+        return data
+    edit_view.jsonable = True
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def submenu_view(self, request, section_id, menu_id):
         menu_id = int(menu_id)
@@ -150,7 +326,7 @@ class OpenERPWebClientSite(object):
                                     search_view_id=search_view_id,
                                     with_edit=True)
 
-        print tree_view.get_url()
+        print tree_view.get_html()
         if request.is_ajax():
             pass
         Menu = request.user.get_model('ir.ui.menu')
@@ -212,7 +388,7 @@ class OpenERPWebClientSite(object):
             per_page = int(get_data.get('pageSize', '40'))
         except ValueError:
             per_page = 40
-        item_list = ItemModel.objects.all()
+        item_list = ItemModel.objects.all().only(*tree_view.fields.keys())
 
         if order_by:
             item_list = item_list.order_by(*order_by)
@@ -289,7 +465,7 @@ class OpenERPWebClientSite(object):
                                   {'form_view':form_view},
                                   context_instance=RequestContext(request))
 
-    def edit_view(self, request, section_id, menu_id, object_id=None):
+    def old_edit_view(self, request, section_id, menu_id, object_id=None):
         menu_id = int(menu_id)
         ctx = request.user.get_default_context()
 
@@ -314,8 +490,6 @@ class OpenERPWebClientSite(object):
                 #raise
                 return redirect('submenu', section_id=section_id,
                                 menu_id=menu_id)
-            print 333333333333333333333
-            print form_view.errors
         else:
             form_view = OpenERPFormView(model_class=ItemModel,
                                         instance=item, view_id=False)
@@ -325,7 +499,6 @@ class OpenERPWebClientSite(object):
         menu = get_object_or_404(Menu, id=menu_id)
         sections = Menu.objects.filter(parent_id__isnull=True)
         menu_list = self.get_menu_childs(Menu.objects.filter(parent_id=section))
-        print form_view.get_html()
         return render_to_response('djoe/client/edit.html',
                                   {'section_list': sections,
                                    'menu_list': menu_list,

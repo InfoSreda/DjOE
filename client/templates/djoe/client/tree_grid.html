@@ -1,5 +1,5 @@
 <div>
-  {{ hidden_html }}
+  {% autoescape off %}{{ tree_view.hidden_html|join:'' }}{% endautoescape %}
 
   {% if not static %}
   <script class="tree-grid-row" type="text/x-kendo-tmpl">
@@ -7,7 +7,7 @@
   </script>
   {% endif %}
 
-<table class="tree-grid" url="{{ tree_view.get_url }}" style="font-size:0.85em;" {% if static %}static="true"{% endif %}>
+<table class="tree-grid" {% if static %}static="true"{% endif %}>
   <thead>
     <tr>
       {% if tree_view.with_edit %}

@@ -65,9 +65,16 @@ body > .container {
    padding-left: 220px;
 }
 
-.tree-grid button.btn{
+button.form_button, button.k-button td button.k-button {
     padding: 1px;
     margin: 1px;
+    line-height: 1;
+    white-space:nowrap;
+    vertical-align:center;
+}
+
+.tree-grid tbody button.k-button, #ie8#skips {
+    min-width: 14px;
 }
 
 label {
@@ -78,6 +85,7 @@ label {
 
 .search_field {
     white-space: pre-wrap;
+    display: inline-block;
 }
 
 .search_field label {
@@ -85,12 +93,15 @@ label {
     font-weight: bold;
     float:left;
 }
+.search_field span.form_field {
+    display: block;
+}
 
 .m2o_field {
     white-space:nowrap;
 }
 
-.search_form span, .edit_form span{
+.search_form span, .edit_form span, .form_label {
     display:inline-block;
 }
 
@@ -99,13 +110,11 @@ label {
 }
 
 
-.search_form input, .search_form select{
-    width: auto;
-    display: block;
-    clear: both;
+.search_form input, .search_form select {
+    width: 130px;
 }
 
-.edit_form .form_field input:text, .edit_form .form_field select, .edit_form .form_field textarea {
+.edit_form .form_field input[type=text], .edit_form .form_field select, .edit_form .form_field textarea {
     width: 99%;
     display:inline-block;
 }
@@ -118,12 +127,11 @@ label {
 }
 
 
-span.form_field a.k-icon {
-    margin: 5px 0 0 3px;
-}
-
-.form_field .k-icon:hover {
-    background-color: #e5e5e5;
+span.form_field a.k-button {
+    padding: 0px 0px 3px 0px;
+    height: 18px;
+    width: 18px;
+    border: 0px;
 }
 
 .group_treeview .k-group {
@@ -166,9 +174,10 @@ span.form_field a.k-icon {
 .separator_vertical {
     width:3px;
     display:inline-block;
+    border-left: 1px solid #222;
 }
 
-.edit_form div,  .edit_form span{
+.edit_form div, .edit_form span{
     vertical-align:top;
 }
 
@@ -184,9 +193,9 @@ div.form_group {
 button img {
     width: 16px;
     height: 16px;
-    margin: 0px 3px;
+    margin: 0px /*3px;*/
 }
 
-.edit_form button.btn, .search_form button.btn {
-    padding: 2px 4px;
+#viewChoicePanel {
+text-align:right;
 }

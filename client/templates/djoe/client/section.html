@@ -1,1 +1,14 @@
 {% extends "djoe/client/base.html" %}
+
+{% block main %}
+<div class="sidebar" id="sidebar">
+  {% block sidebar %}
+  {% include "djoe/client/panel_menu.html" %}
+  {% endblock %}
+</div> <!-- /sidebar -->
+	  
+<div class="content">
+  {% block content %}
+  {% endblock %}
+</div> <!-- /content -->
+{% endblock %}

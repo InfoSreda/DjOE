@@ -2,10 +2,15 @@ import socket
 import cPickle
 import sys
 
+from django.utils.encoding import force_unicode
 from djoe.base.backends.base import Connection, OpenERPException
 
 
 TIMEOUT = 120
+
+class SocketRecieveError(Exception):
+    pass
+
 
 class NetRPCProxy(object):
 
@@ -13,25 +18,24 @@ class NetRPCProxy(object):
         self.host = host
         self.port = port
         self.service = service
+        self.init_socket()
+
+    def init_socket(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(TIMEOUT)
         self.connected = False
-        print 'init'
-
+        
     def connect(self):
-        print 'connect'
-        print dir(self.socket)
-        print self.socket.type
         self.socket.connect((self.host, self.port))
         self.connected = True
-        print 'conn succese'
 
     def disconnect(self):
-        print 'disconnect'
-        return
-        if sys.platform != 'darwin':
-            self.socket.shutdown(socket.SHUT_RDWR)
-        self.socket.close()
+        try:
+            if sys.platform != 'darwin':
+                self.socket.shutdown(socket.SHUT_RDWR)
+            self.socket.close()
+        except:
+            pass
 
     def send(self, msg, exception=False, traceback=None):
         pickled_msg = cPickle.dumps([msg, traceback])
@@ -45,7 +49,7 @@ class NetRPCProxy(object):
         while cursor < size:
             chunk = self.socket.recv(size - cursor)
             if chunk == '':
-                raise RuntimeError, "socket connection broken"
+                raise SocketRecieveError()
             buf += chunk
             cursor += len(chunk)
         return buf
@@ -57,7 +61,7 @@ class NetRPCProxy(object):
 
         if isinstance(res[0], Exception):
             if exc:
-                raise OpenERPException('\n'.join((unicode(r) for r in res)))
+                raise OpenERPException(u'\n'.join((force_unicode(r) for r in res)))
             raise res[0]
         return res[0]
 
@@ -66,13 +70,17 @@ class NetRPCProxy(object):
             return super(NetRPCProxy, self).__getattr__(name)
         def meth(*args):
             args = (self.service, name,) + args
-            if not self.connected:
-                self.connect()
-            try:
-                self.send(args)
-                res = self.receive()
-            finally:
-                self.disconnect()
+            while True:
+                if not self.connected:
+                    self.connect()
+                try:
+                    self.send(args)
+                    res = self.receive()
+                except (SocketRecieveError, socket.error), exc:
+                    self.disconnect()
+                    self.init_socket()
+                    continue
+                break
             return res
         return meth
 

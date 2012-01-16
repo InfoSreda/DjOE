@@ -6,8 +6,9 @@ from django.forms.models import model_to_dict
 from djoe.base.backends import connection, oe_session
 from djoe.base.utils import django2openerp, openerp2django, to_oe
 from djoe.base.query import OpenERPQuerySet
-from djoe.base.fields import OpenERPManyToManyField, OpenERPFileField
+from djoe.base import fields
 import oe_pool
+
 
 
 class OpenERPManager(models.Manager):
@@ -42,36 +43,11 @@ class OpenERPManager(models.Manager):
     def oe_name_get(self, *args, **kwargs):
         return self.get_query_set().oe_name_get(*args, **kwargs)
 
+    def oe_default_get(self, *args, **kwargs):
+        return self.get_query_set().oe_default_get(*args, **kwargs)
+
     def execute(self, meth_name, *args):
         return self.get_query_set().execute(meth_name, *args)
-
-
-def openerp_meth(meth):
-
-    def wrapp(self, *args):
-        res = oe_session.objects(self.__class__._openerp_model,
-                                 meth.__name__, *args)
-        return meth(self, res)
-    return openerp_meth
-
-
-FIELDS_MAP = {
-    'char': models.CharField,
-    'text': models.TextField,
-    'integer': models.IntegerField,
-    'date': models.DateTimeField,
-    'datetime': models.DateTimeField,
-    'time': models.DateTimeField,
-    'selection': models.CharField,
-    'binary': OpenERPFileField,
-    'many2one': models.ForeignKey,
-    'many2many': OpenERPManyToManyField,
-    # TODO: make more correct
-    #'one2many': models.IntegerField,
-    # for float special select from FloatField or DecimalField
-    # for bool special select from BooleanField or NullBooleanField
-    # TODO: reference
-    }
 
 
 FIELD_ATTRS_MAP = {
@@ -104,7 +80,6 @@ class OpenERPBaseModel(models.Model):
             res = self.__class__.objects.oe_write([self.id],
                                                   as_dict, context)
         else:
-            print 'create!!!!!'
             self.id = self.__class__.objects.oe_create(as_dict, context)
         return self
 
@@ -114,7 +89,6 @@ class OpenERPBaseModel(models.Model):
     def name_get(self):
         if not self.pk:
             return ''
-        print '^^^^^^^^^^^', self.__class__.objects.oe_name_get([self.id])
         return self.__class__.objects.oe_name_get([self.id])[0][1]
 
 
@@ -133,51 +107,21 @@ class OpenERPModelFactory(object):
                           OpenERPBaseModel.__subclasses__() if \
                           hasattr(c, '_openerp_model')})
         self.pool = pool
-        self.o2m_links = {}
         self.oe_readonly_fields = set()
 
-    def _create_django_field(self, field_name, field_attrs):
+    def create_django_field(self, field_name, field_attrs):
         openerp_model = self.model_name
         oe_type = field_attrs.get('type')
         required = field_attrs.pop('required', False)
-        kwargs = dict(null=not(required), blank=not(required))
+        kwargs = dict(blank=not(required), null=True)
 
         if field_name == 'id':
             kwargs['primary_key'] = True
-        if oe_type == 'char':
-            kwargs['max_length'] = 1024
-        if oe_type == 'boolean':
-            django_cls =  models.BooleanField if required else \
-                                               models.NullBooleanField
-        elif oe_type == 'float':
-            digits = field_attrs.get('digits')
-            if digits:
-                django_cls = models.DecimalField
-                kwargs['max_digits'] = digits[0]
-                kwargs['decimal_places'] = digits[1]
-            else:
-                django_cls = models.FloatField
-        else:
-            django_cls = FIELDS_MAP.get(oe_type)
-        if not django_cls and not oe_type == 'one2many':
-            return
+        Cls = getattr(fields, 'OpenERP%sField' % oe_type.capitalize())
         kwargs.update( (FIELD_ATTRS_MAP[k], v) for k, v in \
                      field_attrs.iteritems() if k in FIELD_ATTRS_MAP )
 
-        if oe_type == 'one2many':
-            relation = field_attrs.get('relation')
-            rel_model = self.pool.get(relation)
-            if rel_model is None:
-                if relation == openerp_model:
-                    rel_model = 'self'
-                else:
-                    rel_model = OpenERPModelFactory(relation,
-                             deep=self.deep, session=self.session,
-                                 pool=self.pool).get_model(only_name=True)
-            self.o2m_links[field_name] = rel_model
-            return
-
-        if oe_type in ('many2one', 'many2many'):
+        if oe_type in ('many2one', 'many2many', 'one2many'):
             relation = field_attrs.get('relation')
             if relation == openerp_model:
                 to = 'self'
@@ -200,18 +144,12 @@ class OpenERPModelFactory(object):
                 kwargs['to_field'] = 'id'
                 kwargs['related_name'] = rel_name
             else:
-                #rel_name = field_attrs['related_columns'][1] if \
-                #           'related_columns' in field_attrs else rel_name
                 kwargs['related_name'] = rel_name
 
-            field = django_cls(**kwargs)
+            field = Cls(**kwargs)
             field.rel._oe_model = to
-        elif oe_type == 'binary':
-            # TODO: !!!
-            kwargs['upload_to'] = '.'
-        elif oe_type == 'selection':
-            kwargs['max_length'] = 64
-        field = django_cls(**kwargs)
+            return field
+        field = Cls(**kwargs)
         return field
 
     def get_fields(self, fields=None, exclude=None, all_oe_fields=None):
@@ -229,7 +167,7 @@ class OpenERPModelFactory(object):
                 continue
             if exclude and field_name in exclude:
                 continue
-            field = self._create_django_field(field_name, field_attrs)
+            field = self.create_django_field(field_name, field_attrs)
             if field_attrs.get('readonly', False):
                 self.oe_readonly_fields.add(field_name)
             if field:
@@ -246,7 +184,7 @@ class OpenERPModelFactory(object):
 
             fk_field_name = '%s_id' % model_name
             for f in o2m_model._meta.local_fields[:]:
-                if isinstance(f, models.ForeignKey):
+                if not fk_kwargs and isinstance(f, models.ForeignKey):
                     if f.rel.to is klass:
                         fk_kwargs = dict(null=f.null, blank=f.blank, to=klass,
                                      related_name=name)
@@ -258,7 +196,6 @@ class OpenERPModelFactory(object):
             if not fk_kwargs:
                 fk_kwargs = dict(null=True, blank=True, to=klass,
                                      related_name=name)
-
             f = models.ForeignKey(**fk_kwargs)
             f.contribute_to_class(o2m_model, fk_field_name)
 
@@ -275,7 +212,6 @@ class OpenERPModelFactory(object):
         if klass:
             if not getattr(klass, '_openerp_only_name', False):
                 return klass
-            self.o2m_links = klass._openerp_o2m_links
             fields = self.get_fields(fields, exclude, all_oe_fields)
             # replace fields
             klass._meta.local_fields = [klass._meta.get_field_by_name('id')[0]]
@@ -303,13 +239,10 @@ class OpenERPModelFactory(object):
                                   self.model_name.split('.')])
             klass = type(str(class_name), (OpenERPBaseModel,), attrs)
 
-        if self.o2m_links:
-            self.remake_fk(klass)
         klass._openerp_model = self.model_name
         klass._openerp_readonly_fields = self.oe_readonly_fields
         klass._openerp_session = self.session
         klass._openerp_pool = self.pool
-        klass._openerp_o2m_links = self.o2m_links
         self.pool[self.model_name] = klass
         return klass
 
