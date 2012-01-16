@@ -1,12 +1,16 @@
 <div>
   {% autoescape off %}{{ tree_view.hidden_html|join:'' }}{% endautoescape %}
 
+<div class="grid-panel">
+  <a class="k-button new-button">New</a>
+</div>
+
   {% if not static %}
   <script class="tree-grid-row" type="text/x-kendo-tmpl">
   {% autoescape off %}{{ tree_view.get_html }}{% endautoescape %}
   </script>
   {% endif %}
-
+  
 <table class="tree-grid" {% if static %}static="true"{% endif %}>
   <thead>
     <tr>

@@ -334,6 +334,15 @@ $(function() {
 	return this;
     };
 
+    Djoe.View.prototype._viewLink = function(viewType, suff) {
+	var link = '#!/'; 
+	link += ['menu', this.djoe.menuId, 'view', viewType, 
+		 this.views[viewType]].join('/');
+	if (suff)
+	    link += suff;
+	return link;
+    };
+
     Djoe.View.prototype.makeChoicePanel = function() {
 	if ($('#viewChoicePanel').length)
 	    return
@@ -347,8 +356,7 @@ $(function() {
 	    icon.addClass(this.VIEW_ICONS[viewType]);
 	    but = $('<a class="k-button"/>');
 	    but.addClass('but_view_' + viewType);
-	    //but.attr('viewid', views[viewType]);
-	    but.attr('href', '#!/' + ['menu', this.djoe.menuId, 'view', viewType, this.views[viewType]].join('/'));
+	    but.attr('href', this._viewLink(viewType));
 	    but.append(icon);
 	    panel.append(but);
 	}
@@ -358,7 +366,7 @@ $(function() {
 
     Djoe.View.prototype.choicePanelState = function(){
 	$('#viewChoicePanel a').removeClass('k-state-selected');
-	$('#viewChoicePanel a.but_view_' + this.viewType).addClass('k-state-selected');
+	$('#viewChoicePanel a.but-view-' + this.viewType).addClass('k-state-selected');
     }
 
     Djoe.View.prototype.getHelpPanel = function() {
@@ -424,7 +432,8 @@ $(function() {
 	    rowTemplate: kendo.template(element.prev().html())
 	};
 	element.kendoGrid(opts);
-
+	this.getMainPanel().find('.grid-panel a.new-button')
+	    .attr('href', this._viewLink('form'));
 	var perPage = $('<select/>'), opt, val;
 	for (var i = 0, l = this.djoe.PER_PAGES.length; i<l; i++) {
 	    val = this.djoe.PER_PAGES[i];

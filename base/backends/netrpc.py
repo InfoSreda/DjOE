@@ -81,6 +81,7 @@ class NetRPCProxy(object):
                     self.init_socket()
                     continue
                 break
+            self.disconnect()                    
             return res
         return meth
 
