@@ -1,13 +1,13 @@
-$(function() {
+(function() {
 
-    var Djoe = function() {
+    var Djoe = function(options) {
 	this.m2oPool = [];
 	this.windowCount = 0;
 	this.view = {};
 	this.menuId = null;
 	this.hashState = {};
+	this.PER_PAGES = options.PER_PAGE || [20, 50, 100]
     };
-    Djoe.prototype.PER_PAGES = [20, 50, 100]
 
     Djoe.prototype.ajaxErrorSetup = function() {
 	this.errDialog = $('<div id="errorDialog"/>');
@@ -20,7 +20,7 @@ $(function() {
 	this.errDialog.kendoWindow({
 	    modal: true,
 	    visible: false,
-	    close: function(){console.log(this); this.element.html('')}
+	    close: function(){this.element.html('')}
 	});
 
 	this.errDialog.ajaxError(function(event, request, settings) {
@@ -81,12 +81,18 @@ $(function() {
 	part;
 	for (var i = 0, l = splitedHash.length; i<l; i++){
 	    part = splitedHash[i];
-	    if (part == 'menu')
-		this.state.menuId = parseInt(splitedHash[i+1])
-	    if (part == 'view') {
+	    switch (part) {
+	    case 'menu':
+		this.state.menuId = parseInt(splitedHash[i+1]);
+		break;
+	    case 'view':
 		this.state.viewType = splitedHash[i+1];
 		this.state.viewId = parseInt(splitedHash[i+2]);
-	    }
+		break;
+	    case 'object_id':
+		this.state.viewOpts = {object_id: splitedHash[i+1]};
+		break;
+	    }	    
 	}
     };
 
@@ -99,8 +105,7 @@ $(function() {
 	    this.getContentByMenu();
 	}
 	else if (this.state.viewType !== this.view.type) {
-	    console.log(this.view);
-	    this.view.show(this.state.viewType)
+	    this.view.show(this.state.viewType, this.state.viewOpts)
 	}
     };
 
@@ -116,7 +121,7 @@ $(function() {
 		$('.content').html('');
 		json.container = $('.content');
 		self.view = new Djoe.View().init(self, json)
-		self.view.show(self.state.viewType);
+		self.view.show(self.state.viewType, self.state.viewOpts);
 	    }
 	});
     };
@@ -182,6 +187,7 @@ $(function() {
     };
 
     Djoe.prototype.fragmentInit = function(fragment, type) {
+	var self = this;
 	fragment = fragment || $('body');
 	fragment.find('span input:text').each(function(){
 	    var $this  =$(this);
@@ -254,7 +260,7 @@ $(function() {
 		    selectable: 'multiple row',
 		    navigatable: true,
 		    pageable: true,
-		    change: function(){gridChange(this.select(), type)},
+		    //change: function(){gridChange(this.select(), 'type')},
 		    rowTemplate: kendo.template($this.prev().html())
 		};
 	    };
@@ -302,8 +308,9 @@ $(function() {
     // VIEW
     Djoe.View = function(){};
 
-    Djoe.View.prototype.VIEW_TYPES = ['tree', 'form', 'graph', 'calendar', 'gantt'];
+    Djoe.View.prototype.VIEW_TYPES = ['kanban', 'tree', 'form', 'graph', 'calendar', 'gantt'];
     Djoe.View.prototype.VIEW_ICONS = {
+	kanban: '',
 	tree: 'k-search',
 	form: 'k-edit',
 	graph: 'k-insert',
@@ -335,7 +342,7 @@ $(function() {
     };
 
     Djoe.View.prototype._viewLink = function(viewType, suff) {
-	var link = '#!/'; 
+	var link = '#!/';
 	link += ['menu', this.djoe.menuId, 'view', viewType, 
 		 this.views[viewType]].join('/');
 	if (suff)
@@ -355,7 +362,7 @@ $(function() {
 	    icon = $('<span class="k-icon"/>');
 	    icon.addClass(this.VIEW_ICONS[viewType]);
 	    but = $('<a class="k-button"/>');
-	    but.addClass('but_view_' + viewType);
+	    but.addClass('button-view-' + viewType);
 	    but.attr('href', this._viewLink(viewType));
 	    but.append(icon);
 	    panel.append(but);
@@ -366,7 +373,7 @@ $(function() {
 
     Djoe.View.prototype.choicePanelState = function(){
 	$('#viewChoicePanel a').removeClass('k-state-selected');
-	$('#viewChoicePanel a.but-view-' + this.viewType).addClass('k-state-selected');
+	$('#viewChoicePanel a.button-view-' + this.viewType).addClass('k-state-selected');
     }
 
     Djoe.View.prototype.getHelpPanel = function() {
@@ -387,15 +394,24 @@ $(function() {
 	return this.mainPanel
     };
 
-    
     Djoe.View.prototype.getDataSource = function() {
+	var data = {}
+	var searchForm = this.show_search().find('form');
+	var formArray = searchForm.serializeArray();
+	var name;
+	for (var i = 0, l = formArray.length; i < l; i++) {
+	    name = formArray[i].name;
+	    data[name] = function(name){ return function(){return $(searchForm.get(0)[name]).val()}}(name)
+	};
+	console.log(data);
 	if (!this.dataSource) {
 	    this.dataSource = new kendo.data.DataSource({
 		transport: {
 		    read: { 
 			url: this.dataUrl,
-			dataType: "json"
-		    }
+			dataType: "json",
+			data: data
+		    },
 		},
 		schema: {data:'data', total:'total'},
 		pageSize: 20,
@@ -406,11 +422,11 @@ $(function() {
 	return this.dataSource
     };
 
-    Djoe.View.prototype.show = function(viewType) {
+    Djoe.View.prototype.show = function(viewType, options) {
 	this.viewType = viewType || this.viewType;
 	this.choicePanelState();
 	this.getHelpPanel().show();
-	return this['show_' + this.viewType]()
+	return this['show_' + this.viewType](options)
     };
 
     Djoe.View.prototype.show_tree = function() {
@@ -428,7 +444,7 @@ $(function() {
 	    selectable: 'multiple row',
 	    navigatable: true,
 	    pageable: true,
-	    change: function(){gridChange(this.select(), type)},
+	    //change: function(){gridChange(this.select(), type)},
 	    rowTemplate: kendo.template(element.prev().html())
 	};
 	element.kendoGrid(opts);
@@ -449,19 +465,34 @@ $(function() {
 	    });
 	element.next('.k-grid-pager').append(perPage);
 	perPage.kendoDropDownList();
+
+	element.on('click', 'a', function() {
+	    location.hash = self._viewLink('form', '/object_id/' + $(this).parents('tr').attr('rowid') + '/');
+	    return false
+	});
     };
 
     Djoe.View.prototype.show_search = function() {
 	if (!this.searchPanel) {
+	    var self = this;
 	    this.searchPanel = $('<div id="viewSearchPanel"/>');
 	    this.searchPanel.html(this.searchViewHtml);
 	    this.container.append(this.searchPanel);
 	    this.djoe.fragmentInit(this.searchPanel);
+	    this.searchPanel.find('form').submit(function() {
+		self.dataSource.read();
+		return false;
+	    });
+	    this.searchPanel.find('.search-clear-button').click(function(){
+		this.form.reset();
+		self.dataSource.read();
+		return false;
+	    });
 	}
 	return this.searchPanel.show()
     };
 
-    Djoe.View.prototype.show_form = function() {
+    Djoe.View.prototype.show_form = function(options) {
 	var self = this;
 	this.getViewHtml('form', function(json){
 	    if (self.searchPanel)
@@ -470,7 +501,7 @@ $(function() {
 	    var panel = self.getMainPanel().html(json.view_html);
 	    panel.find('form').submit(self.editFormSubmit);
 	    self.djoe.fragmentInit(panel);
-	});
+	}, options);
     };
 
     Djoe.View.prototype.editFormSubmit = function() {
@@ -498,9 +529,11 @@ $(function() {
     };
 
 
-    Djoe.View.prototype.getViewHtml = function(type, callback) {
+    Djoe.View.prototype.getViewHtml = function(type, callback, options) {
 	var self = this;
 	var data = {type:type, model:this.model, id:this.views[type]}
+	if (options)
+	    $.extend(data, options)
 	$.getJSON('../../get_view/', data, callback)
     };
 /*
@@ -538,7 +571,6 @@ $(function() {
 
     fragmentInit();
 */
-var djoe = new Djoe();
-djoe.pageOnLoad();
+window.Djoe = Djoe
 
-});
+})();

@@ -221,7 +221,6 @@ class OpenERPWebClientSite(object):
         if search_view_id:
             initial = request.user.objects('ir.filters', 'get_filters',
                                            model_name)
-            print '%%%%%%%%%%%%%', initial
             search_view = OpenERPSearchView(model_class=ItemModel,
                                         view_id=search_view_id)
             search_view.get_html()
@@ -249,7 +248,7 @@ class OpenERPWebClientSite(object):
             kwargs['csrf_token'] = get_token(request)
 
             if 'object_id' in request.GET:
-                kwargs['instance'] = ItemModel.objects.get(id=request.GET['object_id'])
+                kwargs['instance'] = ItemModel.objects.get(id=int(request.GET['object_id']))
             else:
                 kwargs['instance'] = ItemModel.objects.oe_default_get(context=ctx)
         view = ViewClass(**kwargs)
@@ -294,7 +293,82 @@ class OpenERPWebClientSite(object):
         return data
     edit_view.jsonable = True
 
+    def ajax_search_view(self, request, oe_model, tree_view_id=False,
+                    search_view_id=False):
+        get_data = request.GET.copy()
+        get_data.pop('_', None)
+        ItemModel = request.user.get_model(str(oe_model))
 
+        ctx = request.user.get_default_context()
+
+        tree_view = OpenERPTreeView(model_class=ItemModel,
+                                    view_id=tree_view_id,
+                                    search_view_id=search_view_id,
+                                    with_edit='_with_edit' in get_data)
+
+        search_view = OpenERPSearchView(model_class=ItemModel,
+                                        view_id=search_view_id)
+        n = 0
+        order_by = []
+        dir_dict  = {'asc':'', 'desc':'-'}
+        while True:
+            sort_field = get_data.get('sort[%d][field]' % n)
+            sort_dir = get_data.get('sort[%d][dir]' % n)
+            if not sort_field and not sort_dir:
+                break
+            order_by.append('%s%s' % (dir_dict[sort_dir], sort_field) )
+            n += 1
+        try:
+            page = int(get_data.get('page', '1'))
+        except ValueError:
+            page = 1
+
+        try:
+            per_page = int(get_data.get('pageSize', '40'))
+        except ValueError:
+            per_page = 40
+
+        search_kwargs = {}
+        for k, v in get_data.iteritems():
+            if not v:
+                continue
+            if k.startswith('sort[') or k in ('pageSize', '_with_edit', 'skip',
+                                              'page', 'take'):
+                continue
+            search_kwargs[k] = v
+        print '@#$@#$#@$%$#', search_kwargs
+        item_list = ItemModel.objects.filter(**search_kwargs)\
+                    .only(*tree_view.fields.keys())
+
+        if order_by:
+            item_list = item_list.order_by(*order_by)
+        paginator = Paginator(item_list, per_page) 
+
+        try:
+            items = paginator.page(page)
+        except (EmptyPage, InvalidPage):
+            items = paginator.page(1)
+
+        data = []                    
+        tree_view.get_html()
+
+        for item in items.object_list:
+            row = {'__id': item.id}
+            item_args = {}
+            for f in (f['field'] for f in tree_view.headers):
+                if f is None:
+                    val = ''
+                else:
+                    val = getattr(item, f)
+                if isinstance(val, datetime.datetime):
+                    val = val.strftime('%Y-%m-%d %H:%M:%S')
+                elif isinstance(val, models.Model):
+                    val = unicode(val)
+                row[f] = val
+                row['__color'] = tree_view.get_color(row)
+            data.append( row )
+        return {'data': data, 'total': item_list.count()}
+    ajax_search_view.jsonable = True
 
 
 
@@ -326,7 +400,6 @@ class OpenERPWebClientSite(object):
                                     search_view_id=search_view_id,
                                     with_edit=True)
 
-        print tree_view.get_html()
         if request.is_ajax():
             pass
         Menu = request.user.get_model('ir.ui.menu')
@@ -348,79 +421,6 @@ class OpenERPWebClientSite(object):
                                    'search_view':search_view},
                                   context_instance=RequestContext(request))
 
-    def ajax_search_view(self, request, oe_model, tree_view_id=False,
-                    search_view_id=False):
-        get_data = request.GET.copy()
-        get_data.pop('_', None)
-        ItemModel = request.user.get_model(str(oe_model))
-
-        ctx = request.user.get_default_context()
-
-        tree_view = OpenERPTreeView(model_class=ItemModel,
-                                    view_id=tree_view_id,
-                                    search_view_id=search_view_id,
-                                    with_edit='_with_edit' in get_data)
-
-        search_view = OpenERPSearchView(model_class=ItemModel,
-                                        view_id=search_view_id)
-
-        if not get_data:    
-            return render_to_response("djoe/client/tree_view.html",
-                                  {'tree_view': tree_view,
-                                   'search_view': search_view},
-                                  context_instance=RequestContext(request))
-        n = 0
-        order_by = []
-        dir_dict  = {'asc':'', 'desc':'-'}
-        while True:
-            sort_field = get_data.get('sort[%d][field]' % n)
-            sort_dir = get_data.get('sort[%d][dir]' % n)
-            if not sort_field and not sort_dir:
-                break
-            order_by.append('%s%s' % (dir_dict[sort_dir], sort_field) )
-            n += 1
-        try:
-            page = int(get_data.get('page', '1'))
-        except ValueError:
-            page = 1
-
-        try:
-            per_page = int(get_data.get('pageSize', '40'))
-        except ValueError:
-            per_page = 40
-        item_list = ItemModel.objects.all().only(*tree_view.fields.keys())
-
-        if order_by:
-            item_list = item_list.order_by(*order_by)
-        paginator = Paginator(item_list, per_page) 
-
-        try:
-            items = paginator.page(page)
-        except (EmptyPage, InvalidPage):
-            items = paginator.page(1)
-
-        data = []                    
-        tree_view.get_html()
-
-        for item in items.object_list:
-            row = {'__id': item.id}
-            item_args = {}
-            for f in (f['field'] for f in tree_view.headers):
-                if f is None:
-                    val = ''
-                else:
-                    val = getattr(item, f)
-                if isinstance(val, datetime.datetime):
-                    val = val.strftime('%Y-%m-%d %H:%M:%S')
-                elif isinstance(val, models.Model):
-                    val = unicode(val)
-                row[f] = val
-                row['__color'] = tree_view.get_color(row)
-            data.append( row )
-
-        return HttpResponse(simplejson.dumps({'data': data,
-                                              'total': item_list.count()}))
-
     def ajax_get_name_view(self, request, oe_model, object_id):
         ctx = request.user.get_default_context()
         name = request.user.objects(oe_model, 'name_get', [object_id], ctx)
@@ -435,7 +435,6 @@ class OpenERPWebClientSite(object):
             item = get_object_or_404(ItemModel, id=object_id)
         else:
             item = None
-        #print form_view['arch']
 
         if request.POST:
             form_view = OpenERPFormView(model_class=ItemModel,
@@ -482,10 +481,7 @@ class OpenERPWebClientSite(object):
                                         instance=item,
                                         data=request.POST,
                                         view_id=False)
-            print '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'
-            print form_view.form.data
             if form_view.is_valid():
-                print form_view.form.cleaned_data
                 form_view.save()
                 #raise
                 return redirect('submenu', section_id=section_id,

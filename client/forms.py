@@ -150,8 +150,6 @@ class OpenERPBaseView(object):
             all_html.append('</div>')
             all_html.extend(html)
             all_html.extend(self.get_bottom_html())
-            print '%%%%%%%%%%%%%%%%%%%%'
-            print all_html
             self._cached_html = mark_safe(''.join(all_html))
         return self._cached_html
 
@@ -223,11 +221,11 @@ class OpenERPTreeView(OpenERPBaseView):
         if self.with_edit:
             html.extend([
                 '<td nowrap>',
-                '<a href="./edit/${ __id }/">',
+                '<a href="">',
                 '<span class="k-icon k-edit"></span></a></td>'])
         html.extend(super(OpenERPTreeView, self)._create_html(element))
         if self.with_edit:
-            html.extend(['<td><a href="./delete/${ __id }/">',
+            html.extend(['<td><a href="">',
                      '<span class="k-icon k-delete"></span></a></td>'])
         html.append('</tr>')
         return html
@@ -246,7 +244,7 @@ class OpenERPBaseFormView(OpenERPBaseView):
         'email': forms.EmailField,
         'image': forms.FileField,
         'datetime': forms.DateTimeField,
-        #'float_time'
+        'float_time': forms.FloatField,
         'one2many': OEOneToManyField,
         'one2many_list': OEOneToManyField,
         'many2many': OEManyToManyField,

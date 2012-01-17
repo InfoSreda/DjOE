@@ -14,6 +14,9 @@ def to_oe(value):
         value = str(value)
     elif isinstance(value, models.Model):
         value = value.pk
+    elif isinstance(value, fields.OEFieldFile):
+        # TODO!!!!!!!!!!
+        value = None
     return value
 
 def django2openerp(obj):

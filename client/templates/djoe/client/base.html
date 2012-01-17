@@ -7,7 +7,7 @@
 	{% block media %}
 	{% block css %}
         <link href="{% get_static_prefix %}css/kendo.common.min.css" rel="stylesheet"/>
-        <link href="{% get_static_prefix %}css/kendo.silver.min.css" rel="stylesheet"/>
+        <link href="{% get_static_prefix %}css/{{DJOE.CSS_THEME}}" rel="stylesheet"/>
 	<link rel="stylesheet" href="{% get_static_prefix %}css/djoe.css" />
         {% endblock %}
 
@@ -16,6 +16,12 @@
 	<script src="{% get_static_prefix %}js/jquery.ba-hashchange.min.js"></script>
 	<script src="{% get_static_prefix %}js/kendo.all.min.js"></script>
 	<script src="{% get_static_prefix %}js/djoe.js"></script>
+        <script>
+          $(function(){
+            var djoe = new Djoe({per_page:{{DJOE.PER_PAGE}}});
+            djoe.pageOnLoad();
+          })
+         </script>
 	{% endblock %}
 
         {% endblock %}
