@@ -4,7 +4,7 @@ import mimetypes
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.shortcuts import get_object_or_404
 from django.shortcuts import get_list_or_404
-from django.shortcuts import render_to_response
+from django.shortcuts import render_to_response, redirect
 from djoe.base.backends import oe_session
 from django import forms
 from django.template import RequestContext
@@ -36,15 +36,34 @@ def cms(request, path):
         else:
             path = '%s' % w_path[1]
 
-    site = get_object_or_404(oe_session.get_model('cms.site'), domain=host)
-    query = {'path': path, 'page_id__published':True,
-             'page_id__site__id':site.pk}
+    site = get_object_or_404(oe_session.get_model('cms.site'), host=host)
+    query = {'page_id__published':True,
+             'page_id__site_id__id':site.pk}
     if request.LANGUAGE_ID:
-        query['language'] = request.LANGUAGE_ID
+        query['language_id'] = request.LANGUAGE_ID
     else:
-        query['language__code'] = settings.LANGUAGE_CODE
+        query['language_id__code'] = settings.LANGUAGE_CODE
 
-    title = get_object_or_404( oe_session.get_model('cms.title'), **query)
+    Title = oe_session.get_model('cms.title')
+    full_path = request.get_full_path()[1:]
+    if full_path != path:
+        query['old_path'] = full_path
+    else:
+        query['path'] = path
+    try:
+        title = Title.objects.get(**query)
+    except Title.DoesNotExist:
+        if 'path' in query:
+            raise Http404
+        del query['old_path']
+        query['path'] = path
+        try:
+            title = Title.objects.get(**query)
+        except Title.DoesNotExist:
+            raise Http404
+    else:
+        if 'old_path' in query:
+            return redirect(cms, path=title.path, permanent=True)
 
     if title.publication_date and title.publication_date > now:
         raise Http404

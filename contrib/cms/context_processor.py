@@ -25,7 +25,7 @@ def cms(request):
     langs = Lang.objects.all()
 
     host = request.get_host()
-    site = oe_session.get_model('cms.site').objects.get(domain=host)
+    site = oe_session.get_model('cms.site').objects.get(host=host)
 
     Title = oe_session.get_model('cms.title')
 
@@ -33,9 +33,9 @@ def cms(request):
     query = Q(page_id__published=True, page_id__in_navigation=True)
 
     if request.LANGUAGE_ID:
-        query &= Q(language=request.LANGUAGE_ID)
+        query &= Q(language_id=request.LANGUAGE_ID)
     else:
-        query &= Q(language__code=settings.LANGUAGE_CODE)
+        query &= Q(language_id__code=settings.LANGUAGE_CODE)
 
     w_path = path[1:].split('/')
     if len(w_path[0]) == 2:
