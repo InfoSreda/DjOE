@@ -77,7 +77,7 @@ def cms(request, path):
         'is_catalogue': path.startswith('catalogue')
         }
     for pc in oe_session.get_model('cms.placeholder').objects.filter(title_id=title):
-        ctx[pc.slot] = mark_safe(pc.body)
+        ctx[pc.slot_id.name] = mark_safe(pc.body)
 
     return render_to_response('cms/%s' % title.template_name, ctx,
                               context_instance=RequestContext(request))
