@@ -75,6 +75,6 @@ def cms(request):
     }
 
     for pc in oe_session.get_model('cms.placeholder').objects.filter(title_id__isnull=True):
-        context_extras[pc.slot] = mark_safe(pc.body)
+        context_extras[pc.slot_id.name] = mark_safe(pc.body)
 
     return context_extras
