@@ -25,7 +25,6 @@ def cms(request):
     langs = Lang.objects.all()
 
     host = request.get_host()
-#    site = oe_session.get_model('cms.site').objects.get(host=host)
 
     site = oe_session.get_model('cms.site').objects.filter(host_ids__hostname = host)[0]
 

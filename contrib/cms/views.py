@@ -36,7 +36,7 @@ def cms(request, path):
         else:
             path = '%s' % w_path[1]
 
-    site = get_object_or_404(oe_session.get_model('cms.site'), host=host)
+    site = get_list_or_404(oe_session.get_model('cms.site'), host_ids__hostname = host)[0]
     query = {'page_id__published':True,
              'page_id__site_id__id':site.pk}
     if request.LANGUAGE_ID:
